@@ -12,7 +12,7 @@ impl ColoredRect {
         ColoredRect {
             color: [1.0, 0.5, 0.25, 1.0],
             position: [0.0, 0.0, 100.0, 100.0],
-            velocity: [0.3, 0.3]
+            velocity: [0.0, 0.0]
         }
     }
 
@@ -65,6 +65,35 @@ fn main() {
             }
             Input::Update(_) => {
                 rect.update((640.0, 480.0));
+            }
+            Input::Press(button) => {
+                match button {
+                    Button::Keyboard(key) => {
+                        match key {
+                            Key::Up => {
+                                rect.velocity[1] = -1.0;
+                            }
+                            Key::Right => {
+                                rect.velocity[0] = 1.0;
+                            }
+                            Key::Down => {
+                                rect.velocity[1] = 1.0;
+                            }
+                            Key::Left => {
+                                rect.velocity[0] = -1.0;
+                            }
+                            _ => {}
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            Input::Release(button) => {
+                match button {
+                    _ => {
+                        rect.velocity = [0.0, 0.0]
+                    }
+                }
             }
             _ => {}
         }
