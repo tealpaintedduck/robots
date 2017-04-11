@@ -1,86 +1,59 @@
 extern crate piston_window;
+extern crate sprite;
+extern crate find_folder;
+extern crate ai_behavior;
+
 use piston_window::*;
-
-struct ColoredRect {
-      pub color: [f32; 4],
-      pub position: [f64; 4],
-      velocity: [f64; 2]
-}
-
-impl ColoredRect {
-    fn new() -> Self {
-        ColoredRect {
-            color: [1.0, 0.5, 0.25, 1.0],
-            position: [0.0, 0.0, 100.0, 100.0],
-            velocity: [0.0, 0.0]
-        }
-    }
-
-    fn update_color(color: f32)->f32 {
-        if color <= 0.0 {
-            1.0
-        } else {
-            color - 0.001
-        }
-    }
-
-    fn update(&mut self, size: (f64, f64)) {
-        self.color[0] = Self::update_color(self.color[0]);
-        self.color[1] = Self::update_color(self.color[1]);
-        self.color[2] = Self::update_color(self.color[2]);
-
-        // X updates
-        if self.position[0] + self.position[2] >= size.0 ||
-            self.position[0] < 0.0 {
-            self.velocity[0] = -self.velocity[0];
-        }
-        self.position[0] += self.velocity[0];
-
-        // Y updates
-        if self.position[1] + self.position[3] >= size.1 ||
-            self.position[1] < 0.0 {
-            self.velocity[1] = -self.velocity[1];
-        }
-        self.position[1] += self.velocity[1];
-    }
-}
+use sprite::*;
+use std::rc::Rc;
+use ai_behavior::{
+    Action
+};
 
 fn main() {
-    let mut rect = ColoredRect::new();
     let mut window: PistonWindow =
         WindowSettings::new("Hello Piston!", [640, 480])
         .exit_on_esc(true)
         .vsync(true)
         .build().unwrap();
 
+    let assets = find_folder::Search::ParentsThenKids(3, 3)
+        .for_folder("assets").unwrap();
+
+    let mut scene = Scene::new();
+
+    let tex = Rc::new(
+        Texture::from_path(
+            &mut window.factory,
+            assets.join("robo.png"),
+            Flip::None,
+            &TextureSettings::new()
+        ).unwrap());
+    let mut robo = Sprite::from_texture(tex);
+    robo.set_position(360.0, 240.0);
+    let id = scene.add_child(robo);
+
     while let Some(e) = window.next() {
+        let mut movement = Action(MoveBy(0.0, 0.0, 0.0));
         match e {
-            Input::Render(_) => {
-                window.draw_2d(&e, |c, g| {
-                    clear([1.0; 4], g); // Clear to white
-                    rectangle(rect.color, // Color
-                              rect.position, // Position/size
-                              c.transform, g);
-                });
-            }
-            Input::Update(_) => {
-                rect.update((640.0, 480.0));
-            }
             Input::Press(button) => {
                 match button {
                     Button::Keyboard(key) => {
                         match key {
                             Key::Up => {
-                                rect.velocity[1] = -1.0;
+                                movement = Action(MoveBy(0.1, 0.0, -15.0));
                             }
                             Key::Right => {
-                                rect.velocity[0] = 1.0;
+                                movement = Action(MoveBy(0.1, 15.0, 0.0));
                             }
                             Key::Down => {
-                                rect.velocity[1] = 1.0;
+                                movement = Action(MoveBy(0.1, 0.0, 15.0));
                             }
                             Key::Left => {
-                                rect.velocity[0] = -1.0;
+                                movement = Action(MoveBy(0.1, -15.0, 0.0));
+                            }
+                            Key::Space => {
+                                movement = Action(ToggleVisibility);
                             }
                             _ => {}
                         }
@@ -88,14 +61,16 @@ fn main() {
                     _ => {}
                 }
             }
-            Input::Release(button) => {
-                match button {
-                    _ => {
-                        rect.velocity = [0.0, 0.0]
-                    }
-                }
+            Input::Render(_) => {
+                window.draw_2d(&e, |c, g| {
+                    clear([1.0, 1.0, 1.0, 1.0], g);
+                    scene.draw(c.transform, g);
+                });
             }
             _ => {}
         }
+
+        scene.event(&e);
+        scene.run(id, &movement);
     }
 }
