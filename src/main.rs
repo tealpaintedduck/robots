@@ -7,7 +7,8 @@ use piston_window::*;
 use sprite::*;
 use std::rc::Rc;
 use ai_behavior::{
-    Action
+    Action,
+    Sequence
 };
 
 fn main() {
@@ -22,38 +23,74 @@ fn main() {
 
     let mut scene = Scene::new();
 
-    let tex = Rc::new(
+    let robo_tex = Rc::new(
+        Texture::from_path(
+            &mut window.factory,
+            assets.join("robo-main.png"),
+            Flip::None,
+            &TextureSettings::new()
+        ).unwrap());
+
+    let side_tex = Rc::new(
+        Texture::from_path(
+            &mut window.factory,
+            assets.join("robo-side.png"),
+            Flip::None,
+            &TextureSettings::new()
+        ).unwrap());
+
+    let front_tex = Rc::new(
         Texture::from_path(
             &mut window.factory,
             assets.join("robo.png"),
             Flip::None,
             &TextureSettings::new()
         ).unwrap());
-    let mut robo = Sprite::from_texture(tex);
+
+    let mut robo = Sprite::from_texture(robo_tex);
+    let mut side_robo = Sprite::from_texture(side_tex);
+    let mut front_robo = Sprite::from_texture(front_tex);
+    side_robo.set_visible(false);
+    let side_robo_id = robo.add_child(side_robo);
+    let front_robo_id = robo.add_child(front_robo);
     robo.set_position(360.0, 240.0);
     let id = scene.add_child(robo);
 
     while let Some(e) = window.next() {
-        let mut movement = Action(MoveBy(0.0, 0.0, 0.0));
+        let mut robo_movement = Action(MoveBy(0.0, 0.0, 0.0));
+        let mut side_visibility = Action(MoveBy(0.0, 0.0, 0.0));
+        let mut front_visibility = Action(MoveBy(0.0, 0.0, 0.0));
         match e {
             Input::Press(button) => {
                 match button {
                     Button::Keyboard(key) => {
                         match key {
                             Key::Up => {
-                                movement = Action(MoveBy(0.1, 0.0, -15.0));
+                                robo_movement = Action(MoveBy(0.1, 0.0, -15.0));
+                                side_visibility = Action(Hide);
+                                front_visibility = Action(Show);
                             }
                             Key::Right => {
-                                movement = Action(MoveBy(0.1, 15.0, 0.0));
+                                robo_movement = Action(MoveBy(0.1, 15.0, 0.0));
+                                side_visibility = Sequence(vec![
+                                                    Action(Show),
+                                                    Action(FlipX(false))]);
+                                front_visibility = Action(Hide);
                             }
                             Key::Down => {
-                                movement = Action(MoveBy(0.1, 0.0, 15.0));
+                                robo_movement = Action(MoveBy(0.1, 0.0, 15.0));
+                                side_visibility = Action(Hide);
+                                front_visibility = Action(Show);
                             }
                             Key::Left => {
-                                movement = Action(MoveBy(0.1, -15.0, 0.0));
+                                robo_movement = Action(MoveBy(0.1, -15.0, 0.0));
+                                side_visibility = Sequence(vec![
+                                                    Action(Show),
+                                                    Action(FlipX(true))]);
+                                front_visibility = Action(Hide);
                             }
                             Key::Space => {
-                                movement = Action(ToggleVisibility);
+                                robo_movement = Action(ToggleVisibility);
                             }
                             _ => {}
                         }
@@ -71,6 +108,8 @@ fn main() {
         }
 
         scene.event(&e);
-        scene.run(id, &movement);
+        scene.run(id, &robo_movement);
+        scene.run(front_robo_id, &front_visibility);
+        scene.run(side_robo_id, &side_visibility);
     }
 }
